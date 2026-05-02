@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#edf0f5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wallet">
+<title>My Wallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─── PALETTE: DUSTY BLUE ─── */
+:root {
+  --bg:          #edf0f5;   /* page background */
+  --surface:     #f2f5fb;   /* card / sheet surface */
+  --surface2:    #dce2ef;   /* secondary surface, rows */
+  --border:      #c0ccde;   /* borders */
+  --border-lt:   #d4dcec;   /* light borders */
+  --accent:      #4a6299;   /* primary accent */
+  --accent-dk:   #2d4880;   /* dark accent / headings */
+  --accent-lt:   #8898b8;   /* muted accent */
+  --text:        #1e2430;   /* primary text */
+  --text-2:      #4a6299;   /* secondary text */
+  --text-3:      #8898b8;   /* muted text */
+  --danger:      #c05050;
+  --danger-lt:   rgba(192,80,80,.1);
+  --r-sm:        10px;
+  --r-md:        14px;
+  --r-lg:        20px;
+  --r-xl:        26px;
+  --shadow-sm:   0 2px 8px rgba(30,36,48,.08);
+  --shadow-md:   0 6px 24px rgba(30,36,48,.13);
+  --shadow-lg:   0 16px 48px rgba(30,36,48,.18);
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; }
+
+/* ─── SCREENS ─── */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity .26s ease, transform .26s cubic-bezier(.4,0,.2,1); transform: translateY(12px); }
+.screen.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+/* ─── HOME SCREEN ─── */
+#home { background: var(--bg); }
+
+/* Header */
+.home-header {
+  flex-shrink: 0;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 58px 22px 18px;
+  background: var(--bg);
+}
+.home-header h1 {
+  font-size: 30px; font-weight: 700; letter-spacing: -0.5px;
+  color: var(--text);
+  line-height: 1;
+}
+.home-header h1 span { color: var(--accent); }
+.count-badge {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50px; padding: 6px 16px;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  letter-spacing: 0.2px;
+}
+
+/* Divider */
+.h-divider {
+  flex-shrink: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 0 22px 4px;
+}
+
+/* ─── CAROUSEL ─── */
+.carousel-wrap { flex-shrink: 0; padding: 16px 0 0; }
+.carousel-section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-3);
+  padding: 0 22px; margin-bottom: 12px;
+}
+.carousel-outer { overflow: hidden; width: 100%; }
+.carousel-track {
+  display: flex; gap: 12px; padding: 0 22px 4px;
+  will-change: transform;
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+.carousel-track.na { transition: none; }
+
+.c-tile {
+  flex: 0 0 88px; display: flex; flex-direction: column;
+  align-items: center; gap: 7px; cursor: pointer;
+  transition: transform .15s ease;
+}
+.c-tile:active { transform: scale(.93); }
+
+.c-img {
+  width: 88px; height: 88px; border-radius: 18px;
+  overflow: hidden; background: var(--surface2);
+  border: 2px solid var(--border-lt);
+  box-shadow: var(--shadow-sm);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; transition: border-color .18s, box-shadow .18s;
+}
+.c-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.c-tile.sel .c-img {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74,98,153,.18), var(--shadow-md);
+}
+.c-label {
+  font-size: 11px; font-weight: 500; color: var(--text-3);
+  text-align: center; max-width: 88px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .18s;
+}
+.c-tile.sel .c-label { color: var(--accent); font-weight: 600; }
+
+.carousel-dots { display: flex; justify-content: center; gap: 5px; padding: 8px 0 2px; }
+.cdot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); transition: background .2s, width .2s; }
+.cdot.on { background: var(--accent); width: 14px; border-radius: 3px; }
+
+/* ─── HOME SCROLL ─── */
+.home-scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding: 14px 22px 120px;
+}
+.home-scroll::-webkit-scrollbar { display: none; }
+
+/* Empty */
+.empty-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 52px 24px 32px; text-align: center;
+}
+.empty-icon { font-size: 56px; animation: bob 3.2s ease-in-out infinite; }
+@keyframes bob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-9px);} }
+.empty-wrap h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+.empty-wrap p { font-size: 15px; color: var(--text-3); line-height: 1.65; max-width: 240px; }
+
+/* Section label */
+.section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+/* Card rows */
+@keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+.card-row {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border-lt);
+  border-radius: var(--r-md); padding: 13px 14px;
+  margin-bottom: 10px; cursor: pointer;
+  transition: background .16s, transform .13s, box-shadow .16s;
+  animation: slideIn .28s ease both;
+  position: relative; overflow: hidden;
+}
+.card-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent); border-radius: 0 2px 2px 0;
+  opacity: 0; transition: opacity .16s;
+}
+.card-row:active { background: var(--surface2); transform: scale(.99); }
+.card-row:active::before { opacity: 1; }
+.card-row:hover { box-shadow: var(--shadow-sm); }
+
+.row-thumb {
+  width: 54px; height: 54px; border-radius: var(--r-sm);
+  overflow: hidden; flex-shrink: 0;
+  background: var(--surface2); box-shadow: var(--shadow-sm);
+}
+.row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.row-info { flex: 1; min-width: 0; }
+.row-name {
+  font-size: 17px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; font-weight: 500; }
+.row-arrow { font-size: 18px; color: var(--text-3); flex-shrink: 0; }
+.row-del {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--danger-lt); border: 1px solid rgba(192,80,80,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer; color: var(--danger);
+  flex-shrink: 0; opacity: 0; transition: opacity .15s;
+}
+.card-row:hover .row-del { opacity: 1; }
+
+/* ─── FAB ─── */
+.fab {
+  position: fixed; bottom: 32px; right: 22px;
+  width: 62px; height: 62px; border-radius: 50%;
+  background: var(--accent); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: #fff; font-weight: 300;
+  box-shadow: 0 4px 20px rgba(74,98,153,.4), 0 1px 4px rgba(74,98,153,.3);
+  transition: transform .15s, box-shadow .15s; z-index: 200;
+}
+.fab:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(74,98,153,.3); }
+
+/* ─── CARD VIEW SCREEN ─── */
+#cv { background: var(--bg); }
+
+/* swipe area */
+.sv { position: absolute; inset: 0; overflow: hidden; }
+.st { display: flex; height: 100%; will-change: transform; transition: transform .32s cubic-bezier(.4,0,.2,1); }
+.st.na { transition: none; }
+.ss { flex: 0 0 100%; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; position: relative; padding-top: 70px; }
+
+/* top counter */
+.cv-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 52px 20px 12px; z-index: 20;
+  background: linear-gradient(to bottom, var(--bg) 55%, transparent);
+  pointer-events: none;
+}
+.cv-counter { font-size: 14px; font-weight: 500; color: var(--text-3); letter-spacing: 0.3px; }
+
+/* card presentation */
+.card-wrap { width: 92%; max-width: 400px; display: flex; flex-direction: column; align-items: stretch; }
+
+/* OPTION A: Logo header banner */
+.card-header-banner {
+  background: var(--surface);
+  border: 1px solid var(--border-lt);
+  border-bottom: none;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 14px;
+}
+.banner-logo {
+  width: 52px; height: 52px; border-radius: var(--r-sm);
+  overflow: hidden; flex-shrink: 0;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.banner-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.banner-logo-placeholder { font-size: 22px; color: var(--text-3); }
+.banner-text { flex: 1; min-width: 0; }
+.banner-name {
+  font-size: 20px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.banner-type { font-size: 13px; font-weight: 500; color: var(--text-2); margin-top: 3px; }
+.banner-edit {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; color: var(--accent);
+  transition: background .14s; flex-shrink: 0;
+}
+.banner-edit:active { background: var(--border); }
+
+/* card image frame */
+.card-frame {
+  width: 100%; aspect-ratio: 1.586/1;
+  overflow: hidden; position: relative;
+  border: 1px solid var(--border-lt);
+  border-top: none; border-bottom: none;
+  box-shadow: 0 8px 32px rgba(30,36,48,.15);
+}
+.card-frame > img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; pointer-events: none; }
+.card-frame::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* card footer */
+.card-footer {
+  background: var(--surface);
+  border: 1px solid var(--border-lt);
+  border-top: none;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  padding: 10px 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-footer-dots { display: flex; gap: 6px; }
+.cvdot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background .2s, width .22s; }
+.cvdot.on { background: var(--accent); width: 18px; border-radius: 3px; }
+
+/* swipe arrows */
+.sv-arr {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 60px; border-radius: 50px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 500;
+  color: var(--text-3); background: rgba(242,245,251,.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-lt);
+  pointer-events: none; z-index: 6;
+  transition: opacity .22s;
+}
+.sv-arr.l { left: 8px; }
+.sv-arr.r { right: 8px; }
+.sv-arr.hide { opacity: 0; }
+
+/* ─── BOTTOM HOME BAR ─── */
+.cv-bottom-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border-lt);
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 22px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 20;
+}
+.home-btn {
+  flex: 1; padding: 16px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 16px; font-weight: 600; color: var(--accent);
+  cursor: pointer; transition: background .14s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.home-btn:active { background: var(--surface2); }
+.del-card-btn {
+  width: 54px; height: 54px; border-radius: var(--r-md);
+  background: var(--danger-lt); border: 1px solid rgba(192,80,80,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; flex-shrink: 0;
+  transition: background .14s;
+}
+.del-card-btn:active { background: rgba(192,80,80,.2); }
+
+/* ─── MODALS ─── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(30,36,48,.4); backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 400; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.overlay.on { opacity: 1; pointer-events: all; }
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--border-lt);
+  border-radius: 28px 28px 0 0;
+  padding: 20px 22px 0; width: 100%; max-width: 540px;
+  transform: translateY(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 -8px 40px rgba(30,36,48,.18);
+  max-height: 92vh; overflow-y: auto;
+}
+.sheet::-webkit-scrollbar { display: none; }
+.overlay.on .sheet { transform: translateY(0); }
+.sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 22px; }
+.sheet-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+.field-label { font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.text-input {
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--r-md); padding: 15px 16px;
+  font-family: inherit; font-size: 18px; font-weight: 500; color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.text-input::placeholder { color: var(--text-3); font-weight: 400; }
+.text-input:focus { border-color: var(--accent); }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+.btn-cancel {
+  flex: 1; padding: 16px; border-radius: var(--r-md);
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-3); font-family: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: background .14s;
+}
+.btn-cancel:active { background: var(--border); }
+.btn-primary {
+  flex: 2; padding: 16px; border-radius: var(--r-md);
+  background: var(--accent); border: none;
+  color: #fff; font-family: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(74,98,153,.32);
+  transition: transform .14s, box-shadow .14s, background .14s;
+}
+.btn-primary:active { transform: scale(.97); box-shadow: 0 2px 8px rgba(74,98,153,.2); }
+
+.modal-sep { height: 1px; background: var(--border-lt); margin: 18px 0; }
+
+/* ─── CROP EDITOR ─── */
+.crop-hint { font-size: 13px; color: var(--text-3); text-align: center; margin-bottom: 10px; }
+.crop-vp {
+  width: 100%; border-radius: var(--r-md); overflow: hidden;
+  position: relative; background: var(--surface2);
+  border: 1.5px solid var(--border); cursor: grab; touch-action: none;
+}
+.crop-vp:active { cursor: grabbing; }
+.crop-vp canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+/* corner brackets */
+.crop-vp::before, .crop-vp::after {
+  content: ''; position: absolute; z-index: 3; pointer-events: none;
+  width: 20px; height: 20px; border-color: var(--accent); border-style: solid; opacity: .7;
+}
+.crop-vp::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+.crop-vp::after  { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+.zoom-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; }
+.zbtn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 300; color: var(--accent); cursor: pointer; flex-shrink: 0;
+  transition: background .13s;
+}
+.zbtn:active { background: var(--border); }
+.zslider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 2px; background: var(--border); outline: none;
+}
+.zslider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(74,98,153,.35);
+}
+.zslider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; box-shadow: 0 2px 8px rgba(74,98,153,.35); }
+.zoom-reset { font-size: 13px; color: var(--text-2); cursor: pointer; white-space: nowrap; font-weight: 500; }
+.zoom-reset:active { color: var(--accent); }
+.change-link-wrap { margin-bottom: 8px; }
+.change-link { font-size: 13px; color: var(--accent); font-weight: 500; cursor: pointer; text-decoration: underline; position: relative; display: inline-block; }
+.change-link input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Upload zone */
+.uzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--r-md); padding: 28px 20px;
+  text-align: center; cursor: pointer; position: relative;
+  background: var(--bg); margin-bottom: 14px;
+  transition: border-color .14s, background .14s;
+}
+.uzone:hover, .uzone.drag { border-color: var(--accent); background: rgba(74,98,153,.04); }
+.uzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.uzone-icon { font-size: 32px; margin-bottom: 8px; }
+.uzone p { font-size: 14px; color: var(--text-3); line-height: 1.65; }
+.uzone strong { color: var(--accent); }
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed; bottom: 110px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--text); color: var(--surface);
+  border-radius: 50px; padding: 11px 22px;
+  font-size: 14px; font-weight: 500;
+  white-space: nowrap; z-index: 600;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  box-shadow: var(--shadow-md);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ─── EDIT CARD MODAL TABS ─── */
+.edit-tabs {
+  display: flex; gap: 6px; margin-bottom: 20px;
+  background: var(--surface2); border-radius: var(--r-md);
+  padding: 4px;
+}
+.edit-tab {
+  flex: 1; padding: 10px 6px;
+  border: none; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text-3); transition: background .15s, color .15s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.edit-tab.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
+.edit-tab-panel { display: none; }
+.edit-tab-panel.active { display: block; }
+
+/* existing-img preview inside edit modal */
+.existing-img-wrap {
+  position: relative; margin-bottom: 12px;
+}
+.existing-img-wrap img {
+  width: 100%; border-radius: var(--r-md);
+  display: block; border: 1px solid var(--border-lt);
+}
+.existing-img-wrap.square img { aspect-ratio: 1/1; object-fit: cover; }
+.existing-img-wrap.card-ar img { aspect-ratio: 1.586/1; object-fit: cover; }
+.replace-btn {
+  width: 100%; padding: 13px; border-radius: var(--r-md);
+  background: var(--surface2); border: 1.5px dashed var(--border);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--accent); cursor: pointer;
+  transition: background .14s, border-color .14s;
+  margin-bottom: 14px; position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.replace-btn:hover { background: var(--surface); border-color: var(--accent); }
+.replace-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.remove-logo-btn {
+  width: 100%; padding: 13px; border-radius: var(--r-md);
+  background: var(--danger-lt); border: 1px solid rgba(192,80,80,.2);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--danger); cursor: pointer; transition: background .14s;
+  margin-top: 10px;
+}
+.remove-logo-btn:active { background: rgba(192,80,80,.18); }
+.no-logo-hint {
+  padding: 24px 0 8px; text-align: center;
+  font-size: 14px; color: var(--text-3); line-height: 1.6;
+}
+
+/* Safe areas */
+@supports (padding: env(safe-area-inset-top)) {
+  .home-header { padding-top: max(58px, calc(env(safe-area-inset-top) + 18px)); }
+  .cv-topbar   { padding-top: max(52px, calc(env(safe-area-inset-top) + 12px)); }
+  .fab         { bottom: calc(32px + env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════
+     HOME SCREEN
+════════════════════════════ -->
+<div id="home" class="screen active">
+
+  <div class="home-header">
+    <h1>My <span>Wallet</span></h1>
+    <div class="count-badge" id="count-badge">0 cards</div>
+  </div>
+
+  <div class="h-divider"></div>
+
+  <!-- Carousel (hidden when empty) -->
+  <div class="carousel-wrap" id="carousel-wrap" style="display:none">
+    <div class="carousel-section-label">Your cards</div>
+    <div class="carousel-outer" id="carousel-outer">
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
+    <div class="carousel-dots" id="carousel-dots"></div>
+  </div>
+
+  <div class="home-scroll">
+    <!-- Empty state -->
+    <div class="empty-wrap" id="empty-state">
+      <div class="empty-icon">💳</div>
+      <h2>No cards yet</h2>
+      <p>Tap the + button to add your first loyalty card, membership or coupon.</p>
+    </div>
+
+    <!-- Card list -->
+    <div id="list-wrap" style="display:none">
+      <div class="section-label">All cards</div>
+      <div id="cards-list"></div>
+    </div>
+  </div>
+
+  <button class="fab" id="add-btn" aria-label="Add card">+</button>
+</div>
+
+<!-- ════════════════════════════
+     CARD VIEW SCREEN
+════════════════════════════ -->
+<div id="cv" class="screen">
+
+  <!-- Swipe viewport -->
+  <div class="sv" id="sv">
+    <div class="st" id="st"></div>
+  </div>
+
+  <!-- Top counter -->
+  <div class="cv-topbar">
+    <span class="cv-counter" id="cv-counter"></span>
+  </div>
+
+  <!-- Swipe arrows -->
+  <div class="sv-arr l hide" id="arr-l">‹</div>
+  <div class="sv-arr r hide" id="arr-r">›</div>
+
+  <!-- Bottom bar -->
+  <div class="cv-bottom-bar">
+    <button class="home-btn" id="home-btn">← Back to wallet</button>
+    <button class="del-card-btn" id="del-btn" title="Delete card">🗑</button>
+  </div>
+
+</div>
+
+<!-- EDIT CARD MODAL replaces the old rename modal -->
+
+<!-- ════════════════════════════
+     ADD CARD MODAL
+════════════════════════════ -->
+<div class="overlay" id="add-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add a card</div>
+
+    <!-- Card image -->
+    <div class="field-label">Card image</div>
+    <div class="uzone" id="card-uzone">
+      <input type="file" id="card-file" accept="image/*">
+      <div class="uzone-icon">📷</div>
+      <p>Tap to <strong>choose a photo</strong><br>or screenshot of your card</p>
+    </div>
+    <div id="card-crop-section" style="display:none">
+      <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+      <div class="crop-vp" id="card-crop-vp" style="aspect-ratio:1.586/1">
+        <canvas id="card-canvas"></canvas>
+      </div>
+      <div class="zoom-row">
+        <button class="zbtn" id="card-zout">−</button>
+        <input type="range" class="zslider" id="card-zslider" min="10" max="300" value="100" step="1">
+        <button class="zbtn" id="card-zin">+</button>
+        <span class="zoom-reset" id="card-zreset">Reset</span>
+      </div>
+      <div class="change-link-wrap">
+        <label class="change-link">Change photo<input type="file" id="card-file2" accept="image/*"></label>
+      </div>
+    </div>
+
+    <div class="modal-sep"></div>
+
+    <!-- Logo image -->
+    <div class="field-label">Logo / icon <span style="font-size:10px;color:var(--text-3);text-transform:none;letter-spacing:0;font-weight:400">optional</span></div>
+    <div class="uzone" id="logo-uzone">
+      <input type="file" id="logo-file" accept="image/*">
+      <div class="uzone-icon">🏷️</div>
+      <p>Tap to add a <strong>logo</strong> — shown in the header &amp; home screen</p>
+    </div>
+    <div id="logo-crop-section" style="display:none">
+      <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+      <div class="crop-vp" id="logo-crop-vp" style="aspect-ratio:1/1">
+        <canvas id="logo-canvas"></canvas>
+      </div>
+      <div class="zoom-row">
+        <button class="zbtn" id="logo-zout">−</button>
+        <input type="range" class="zslider" id="logo-zslider" min="10" max="300" value="100" step="1">
+        <button class="zbtn" id="logo-zin">+</button>
+        <span class="zoom-reset" id="logo-zreset">Reset</span>
+      </div>
+      <div class="change-link-wrap">
+        <label class="change-link">Change logo<input type="file" id="logo-file2" accept="image/*"></label>
+      </div>
+    </div>
+
+    <div class="modal-sep"></div>
+
+    <!-- Name -->
+    <div class="field-label">Card name</div>
+    <input class="text-input" id="add-name" type="text" maxlength="40" placeholder="e.g. Lidl Plus">
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="add-cancel">Cancel</button>
+      <button class="btn-primary" id="add-save">Add to wallet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     EDIT CARD MODAL
+════════════════════════════ -->
+<div class="overlay" id="editcard-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Edit card</div>
+
+    <!-- Tabs -->
+    <div class="edit-tabs">
+      <button class="edit-tab active" data-tab="ec-name">✎ Name</button>
+      <button class="edit-tab" data-tab="ec-card">📷 Card image</button>
+      <button class="edit-tab" data-tab="ec-logo">🏷️ Logo</button>
+    </div>
+
+    <!-- Tab: Name -->
+    <div class="edit-tab-panel active" id="ec-name">
+      <div class="field-label">Card name</div>
+      <input class="text-input" id="ec-name-input" type="text" maxlength="40" placeholder="e.g. Starbucks Rewards">
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-name-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-name-save">Save name</button>
+      </div>
+    </div>
+
+    <!-- Tab: Card image -->
+    <div class="edit-tab-panel" id="ec-card">
+      <div id="ec-card-current">
+        <div class="field-label">Current card image</div>
+        <div class="existing-img-wrap card-ar" id="ec-card-preview-wrap">
+          <img id="ec-card-current-img" src="" alt="Current card">
+        </div>
+        <label class="replace-btn">
+          📷 Replace card image
+          <input type="file" id="ec-card-file" accept="image/*">
+        </label>
+      </div>
+      <div id="ec-card-crop-section" style="display:none">
+        <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+        <div class="crop-vp" id="ec-card-crop-vp" style="aspect-ratio:1.586/1">
+          <canvas id="ec-card-canvas"></canvas>
+        </div>
+        <div class="zoom-row">
+          <button class="zbtn" id="ec-card-zout">−</button>
+          <input type="range" class="zslider" id="ec-card-zslider" min="10" max="300" value="100" step="1">
+          <button class="zbtn" id="ec-card-zin">+</button>
+          <span class="zoom-reset" id="ec-card-zreset">Reset</span>
+        </div>
+        <div class="change-link-wrap">
+          <label class="change-link">Choose different photo<input type="file" id="ec-card-file2" accept="image/*"></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-card-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-card-save">Save image</button>
+      </div>
+    </div>
+
+    <!-- Tab: Logo -->
+    <div class="edit-tab-panel" id="ec-logo">
+      <div id="ec-logo-current">
+        <div id="ec-logo-has-img" style="display:none">
+          <div class="field-label">Current logo</div>
+          <div class="existing-img-wrap square" style="width:100px;margin-bottom:12px;">
+            <img id="ec-logo-current-img" src="" alt="Current logo">
+          </div>
+        </div>
+        <div id="ec-logo-no-img">
+          <div class="no-logo-hint">No logo set for this card.</div>
+        </div>
+        <label class="replace-btn">
+          🏷️ <span id="ec-logo-btn-label">Add logo</span>
+          <input type="file" id="ec-logo-file" accept="image/*">
+        </label>
+      </div>
+      <div id="ec-logo-crop-section" style="display:none">
+        <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+        <div class="crop-vp" id="ec-logo-crop-vp" style="aspect-ratio:1/1">
+          <canvas id="ec-logo-canvas"></canvas>
+        </div>
+        <div class="zoom-row">
+          <button class="zbtn" id="ec-logo-zout">−</button>
+          <input type="range" class="zslider" id="ec-logo-zslider" min="10" max="300" value="100" step="1">
+          <button class="zbtn" id="ec-logo-zin">+</button>
+          <span class="zoom-reset" id="ec-logo-zreset">Reset</span>
+        </div>
+        <div class="change-link-wrap">
+          <label class="change-link">Choose different logo<input type="file" id="ec-logo-file2" accept="image/*"></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-logo-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-logo-save">Save logo</button>
+      </div>
+      <button class="remove-logo-btn" id="ec-logo-remove" style="display:none">Remove logo</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══ PWA ══ */
+const _m={name:"My Wallet",short_name:"Wallet",start_url:"./",display:"standalone",background_color:"#edf0f5",theme_color:"#edf0f5",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23edf0f5'/><text x='96' y='130' font-size='110' text-anchor='middle'>💳</text></svg>",sizes:"192x192",type:"image/svg+xml"}]};
+document.head.appendChild(Object.assign(document.createElement('link'),{rel:'manifest',href:URL.createObjectURL(new Blob([JSON.stringify(_m)],{type:'application/json'}))}));
+if('serviceWorker'in navigator)navigator.serviceWorker.register(URL.createObjectURL(new Blob([`const C='wv5';self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',()=>clients.claim());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`],{type:'application/javascript'})));
+
+/* ══ DATA ══ */
+let cards=[], curIdx=0;
+function save(){try{localStorage.setItem('mywallet_v5',JSON.stringify(cards));}catch(e){toast('Storage full');}}
+function load(){try{const r=localStorage.getItem('mywallet_v5');if(r)cards=JSON.parse(r);}catch(e){cards=[];}}
+
+/* ══ SCREENS ══ */
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));}
+
+/* ══ TOAST ══ */
+let _tt;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2400);}
+
+/* ══════════════════════════════
+   CROP ENGINE (reusable)
+══════════════════════════════ */
+function CropEngine(canvasId, vpId, zSliderId, zInId, zOutId, zResetId){
+  const canvas=document.getElementById(canvasId);
+  const vp=document.getElementById(vpId);
+  const ctx=canvas.getContext('2d');
+  const sl=document.getElementById(zSliderId);
+  const s={img:null,scale:1,min:.5,max:6,ox:0,oy:0,base:1,W:0,H:0,iW:0,iH:0,drag:false,lx:0,ly:0,pinch:false,pd0:0,ps0:1};
+
+  const draw=()=>{
+    if(!s.img)return;
+    canvas.width=s.W; canvas.height=s.H;
+    ctx.clearRect(0,0,s.W,s.H);
+    const dw=s.iW*s.scale, dh=s.iH*s.scale;
+    ctx.drawImage(s.img,(s.W-dw)/2+s.ox*s.scale,(s.H-dh)/2+s.oy*s.scale,dw,dh);
+  };
+  const clamp=()=>{
+    const mox=Math.max(0,(s.iW*s.scale-s.W)/2/s.scale);
+    const moy=Math.max(0,(s.iH*s.scale-s.H)/2/s.scale);
+    s.ox=Math.max(-mox,Math.min(mox,s.ox));
+    s.oy=Math.max(-moy,Math.min(moy,s.oy));
+  };
+  const setScale=v=>{s.scale=Math.max(s.min,Math.min(s.max,v));sl.value=Math.round(s.scale*100);clamp();draw();};
+  const reset=()=>{s.scale=s.base;s.ox=0;s.oy=0;sl.value=Math.round(s.scale*100);draw();};
+
+  const loadImg=dataUrl=>{
+    const img=new Image();
+    img.onload=()=>{
+      s.img=img; s.iW=img.naturalWidth; s.iH=img.naturalHeight;
+      requestAnimationFrame(()=>{
+        const r=vp.getBoundingClientRect();
+        s.W=Math.round(r.width)||vp.offsetWidth;
+        s.H=Math.round(r.height)||vp.offsetHeight;
+        const sx=s.W/s.iW, sy=s.H/s.iH;
+        s.base=Math.max(sx,sy); s.scale=s.base;
+        s.min=s.base*.4; s.max=s.base*7;
+        s.ox=0; s.oy=0;
+        sl.min=Math.round(s.min*100); sl.max=Math.round(s.max*100); sl.value=Math.round(s.scale*100);
+        draw();
+      });
+    };
+    img.src=dataUrl;
+  };
+
+  const exportImg=(outW,outH)=>{
+    if(!s.img)return null;
+    const off=document.createElement('canvas');
+    off.width=outW; off.height=outH;
+    const oc=off.getContext('2d');
+    const sc=outW/s.W;
+    const dw=s.iW*s.scale*sc, dh=s.iH*s.scale*sc;
+    oc.drawImage(s.img,(outW-dw)/2+s.ox*s.scale*sc,(outH-dh)/2+s.oy*s.scale*sc,dw,dh);
+    return off.toDataURL('image/jpeg',.9);
+  };
+
+  /* mouse */
+  vp.addEventListener('mousedown',e=>{s.drag=true;s.lx=e.clientX;s.ly=e.clientY;e.preventDefault();});
+  document.addEventListener('mouseup',()=>s.drag=false);
+  vp.addEventListener('mousemove',e=>{
+    if(!s.drag)return;
+    s.ox+=(e.clientX-s.lx)/s.scale; s.oy+=(e.clientY-s.ly)/s.scale;
+    s.lx=e.clientX; s.ly=e.clientY; clamp(); draw();
+  });
+
+  /* touch */
+  const pd=e=>{const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;return Math.sqrt(dx*dx+dy*dy);};
+  vp.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){s.pinch=true;s.drag=false;s.pd0=pd(e);s.ps0=s.scale;}
+    else{s.drag=true;s.pinch=false;s.lx=e.touches[0].clientX;s.ly=e.touches[0].clientY;}
+  },{passive:true});
+  vp.addEventListener('touchmove',e=>{
+    if(s.pinch&&e.touches.length===2){setScale(s.ps0*(pd(e)/s.pd0));}
+    else if(s.drag&&e.touches.length===1){
+      s.ox+=(e.touches[0].clientX-s.lx)/s.scale; s.oy+=(e.touches[0].clientY-s.ly)/s.scale;
+      s.lx=e.touches[0].clientX; s.ly=e.touches[0].clientY; clamp(); draw();
+    }
+  },{passive:true});
+  vp.addEventListener('touchend',e=>{if(e.touches.length<2)s.pinch=false;if(!e.touches.length)s.drag=false;},{passive:true});
+  vp.addEventListener('wheel',e=>{e.preventDefault();setScale(s.scale*(e.deltaY<0?1.1:.91));},{passive:false});
+
+  /* controls */
+  document.getElementById(zInId).addEventListener('click',()=>setScale(s.scale*1.14));
+  document.getElementById(zOutId).addEventListener('click',()=>setScale(s.scale/1.14));
+  sl.addEventListener('input',e=>setScale(parseFloat(e.target.value)/100));
+  document.getElementById(zResetId).addEventListener('click',reset);
+
+  return {loadImg, exportImg, reset, get has(){return !!s.img;}};
+}
+
+const cardCrop = CropEngine('card-canvas','card-crop-vp','card-zslider','card-zin','card-zout','card-zreset');
+const logoCrop  = CropEngine('logo-canvas','logo-crop-vp','logo-zslider','logo-zin','logo-zout','logo-zreset');
+
+/* ══ FILE INPUTS ══ */
+function hookFile(inputId, sectionId, uzoneId, engine, nameInputId){
+  function handle(file){
+    if(!file||!file.type.startsWith('image/'))return toast('Please choose an image file');
+    const r=new FileReader();
+    r.onload=ev=>{
+      document.getElementById(uzoneId).style.display='none';
+      document.getElementById(sectionId).style.display='block';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>engine.loadImg(ev.target.result)));
+      if(nameInputId){const nf=document.getElementById(nameInputId);if(!nf.value)nf.value=file.name.replace(/\.[^.]+$/,'').replace(/[-_.]/g,' ').trim();}
+    };
+    r.readAsDataURL(file);
+  }
+  document.getElementById(inputId).addEventListener('change',e=>{if(e.target.files[0])handle(e.target.files[0]);});
+  const uz=document.getElementById(uzoneId);
+  uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag');});
+  uz.addEventListener('dragleave',()=>uz.classList.remove('drag'));
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag');handle(e.dataTransfer.files[0]);});
+}
+hookFile('card-file','card-crop-section','card-uzone',cardCrop,'add-name');
+hookFile('card-file2','card-crop-section','card-uzone',cardCrop,null);
+hookFile('logo-file','logo-crop-section','logo-uzone',logoCrop,null);
+hookFile('logo-file2','logo-crop-section','logo-uzone',logoCrop,null);
+
+/* ══ CAROUSEL ══ */
+const TILE=88+12;
+let carOff=0, carTX=0, carDX=0, carDrag=false;
+
+function buildCarousel(){
+  const wrap=document.getElementById('carousel-wrap');
+  const track=document.getElementById('carousel-track');
+  const dots=document.getElementById('carousel-dots');
+  track.innerHTML=''; dots.innerHTML='';
+  if(!cards.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  cards.forEach((card,i)=>{
+    const tile=document.createElement('div');
+    tile.className='c-tile'+(i===curIdx?' sel':'');
+    const src=card.logoUrl||card.dataUrl;
+    tile.innerHTML=`<div class="c-img"><img src="${src}" alt="${card.title}"></div><div class="c-label">${card.title}</div>`;
+    tile.addEventListener('click',()=>openCardView(i));
+    track.appendChild(tile);
+  });
+  const n=Math.min(cards.length,10);
+  for(let i=0;i<n;i++){const d=document.createElement('div');d.className='cdot'+(i===curIdx%n?' on':'');dots.appendChild(d);}
+  snapCarousel(false);
+}
+
+function updateCarouselSel(){
+  document.querySelectorAll('.c-tile').forEach((t,i)=>t.classList.toggle('sel',i===curIdx));
+  const n=Math.min(cards.length,10);
+  document.querySelectorAll('.cdot').forEach((d,i)=>d.classList.toggle('on',i===curIdx%n));
+  snapCarousel(true);
+}
+
+function snapCarousel(anim){
+  const track=document.getElementById('carousel-track');
+  const outer=document.getElementById('carousel-outer');
+  if(!track||!outer)return;
+  const ow=outer.offsetWidth||window.innerWidth;
+  const target=22+curIdx*TILE+TILE/2-ow/2;
+  const maxOff=Math.max(0,cards.length*TILE+22-ow);
+  carOff=Math.max(0,Math.min(maxOff,target));
+  if(!anim)track.classList.add('na');
+  track.style.transform=`translateX(-${carOff}px)`;
+  if(!anim)requestAnimationFrame(()=>track.classList.remove('na'));
+}
+
+const carOuter=document.getElementById('carousel-outer');
+carOuter.addEventListener('touchstart',e=>{carTX=e.touches[0].clientX;carDX=0;carDrag=true;},{passive:true});
+carOuter.addEventListener('touchmove',e=>{
+  if(!carDrag)return;
+  carDX=e.touches[0].clientX-carTX;
+  const track=document.getElementById('carousel-track');
+  track.classList.add('na');
+  const ow=carOuter.offsetWidth||window.innerWidth;
+  const mx=Math.max(0,cards.length*TILE+22-ow);
+  track.style.transform=`translateX(-${Math.max(0,Math.min(mx,carOff-carDX))}px)`;
+},{passive:true});
+carOuter.addEventListener('touchend',()=>{
+  const track=document.getElementById('carousel-track');
+  track.classList.remove('na');
+  const ow=carOuter.offsetWidth||window.innerWidth;
+  const mx=Math.max(0,cards.length*TILE+22-ow);
+  carOff=Math.max(0,Math.min(mx,carOff-carDX));
+  track.style.transform=`translateX(-${carOff}px)`;
+  carDrag=false; carDX=0;
+});
+
+/* ══ HOME RENDER ══ */
+function renderHome(){
+  const n=cards.length;
+  document.getElementById('count-badge').textContent=n?`${n} card${n!==1?'s':''}`:'0 cards';
+  document.getElementById('empty-state').style.display=n?'none':'';
+  document.getElementById('list-wrap').style.display=n?'':'none';
+  buildCarousel();
+  const list=document.getElementById('cards-list');
+  list.innerHTML='';
+  cards.forEach((card,i)=>{
+    const row=document.createElement('div');
+    row.className='card-row';
+    row.style.animationDelay=`${i*38}ms`;
+    const src=card.logoUrl||card.dataUrl;
+    row.innerHTML=`
+      <div class="row-thumb"><img src="${src}" alt=""></div>
+      <div class="row-info">
+        <div class="row-name">${card.title}</div>
+        <div class="row-sub">Card ${i+1}</div>
+      </div>
+      <button class="row-del" title="Remove">✕</button>
+      <span class="row-arrow">›</span>
+    `;
+    row.addEventListener('click',e=>{if(e.target.closest('.row-del'))return;openCardView(i);});
+    row.querySelector('.row-del').addEventListener('click',e=>{
+      e.stopPropagation();
+      if(confirm(`Remove "${card.title}"?`)){cards.splice(i,1);save();curIdx=Math.min(curIdx,Math.max(0,cards.length-1));renderHome();toast('Card removed');}
+    });
+    list.appendChild(row);
+  });
+}
+
+/* ══ CARD VIEW ══ */
+function buildSlides(){
+  const st=document.getElementById('st');
+  st.innerHTML='';
+  cards.forEach((card,i)=>{
+    const ss=document.createElement('div');
+    ss.className='ss';
+    const logoHTML=card.logoUrl
+      ? `<img src="${card.logoUrl}" alt="${card.title}">`
+      : `<span class="banner-logo-placeholder">💳</span>`;
+    const dotsHTML=cards.map((_,di)=>`<div class="cvdot${di===i?' on':''}"></div>`).join('');
+    ss.innerHTML=`
+      <div class="card-wrap">
+        <div class="card-header-banner">
+          <div class="banner-logo">${logoHTML}</div>
+          <div class="banner-text">
+            <div class="banner-name">${card.title}</div>
+            <div class="banner-type">Card ${i+1}</div>
+          </div>
+          <button class="banner-edit" data-i="${i}" title="Rename">✎</button>
+        </div>
+        <div class="card-frame">
+          <img src="${card.dataUrl}" alt="${card.title}" draggable="false">
+        </div>
+        <div class="card-footer">
+          <div class="card-footer-dots">${dotsHTML}</div>
+        </div>
+      </div>
+    `;
+    ss.querySelector('.banner-edit').addEventListener('click',()=>openEditCard(i,'ec-name'));
+    ss.querySelector('.banner-name').addEventListener('click',()=>openEditCard(i,'ec-name'));
+    st.appendChild(ss);
+  });
+}
+
+function updateCVUI(){
+  document.getElementById('cv-counter').textContent=`${curIdx+1} / ${cards.length}`;
+  document.getElementById('arr-l').classList.toggle('hide',curIdx===0);
+  document.getElementById('arr-r').classList.toggle('hide',curIdx===cards.length-1);
+  // update dots in current slide
+  document.querySelectorAll('.card-footer-dots').forEach((bar,si)=>{
+    bar.querySelectorAll('.cvdot').forEach((d,di)=>d.classList.toggle('on',di===curIdx));
+  });
+}
+
+function goToSlide(idx,anim=true){
+  curIdx=Math.max(0,Math.min(cards.length-1,idx));
+  const st=document.getElementById('st');
+  if(!anim)st.classList.add('na');
+  st.style.transform=`translateX(-${curIdx*100}%)`;
+  if(!anim)requestAnimationFrame(()=>st.classList.remove('na'));
+  updateCVUI();
+}
+
+function openCardView(idx){
+  curIdx=idx; buildSlides(); goToSlide(idx,false); showScreen('cv');
+}
+
+/* swipe */
+let tx=0,ty=0,dx=0,sw=false,ax=null;
+const sv=document.getElementById('sv');
+sv.addEventListener('touchstart',e=>{if(e.touches.length>1)return;tx=e.touches[0].clientX;ty=e.touches[0].clientY;dx=0;sw=false;ax=null;},{passive:true});
+sv.addEventListener('touchmove',e=>{
+  if(e.touches.length>1)return;
+  const ddx=e.touches[0].clientX-tx,ddy=e.touches[0].clientY-ty;
+  if(!ax&&(Math.abs(ddx)>8||Math.abs(ddy)>8))ax=Math.abs(ddx)>Math.abs(ddy)?'h':'v';
+  if(ax==='h'){sw=true;dx=ddx;const st=document.getElementById('st');st.classList.add('na');st.style.transform=`translateX(calc(-${curIdx*100}% + ${dx}px))`;}
+},{passive:true});
+sv.addEventListener('touchend',()=>{
+  document.getElementById('st').classList.remove('na');
+  if(!sw){goToSlide(curIdx);return;}
+  const th=window.innerWidth*.22;
+  if(dx<-th&&curIdx<cards.length-1)goToSlide(curIdx+1);
+  else if(dx>th&&curIdx>0)goToSlide(curIdx-1);
+  else goToSlide(curIdx);
+  sw=false;ax=null;dx=0;
+});
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('cv').classList.contains('active'))return;
+  if(e.key==='ArrowRight')goToSlide(curIdx+1);
+  if(e.key==='ArrowLeft')goToSlide(curIdx-1);
+  if(e.key==='Escape')goHome();
+});
+
+/* home / delete */
+function goHome(){showScreen('home');curIdx=Math.min(curIdx,Math.max(0,cards.length-1));renderHome();}
+document.getElementById('home-btn').addEventListener('click',goHome);
+document.getElementById('del-btn').addEventListener('click',()=>{
+  if(!cards[curIdx])return;
+  if(!confirm(`Remove "${cards[curIdx].title}"?`))return;
+  cards.splice(curIdx,1);save();
+  if(!cards.length){goHome();return;}
+  curIdx=Math.min(curIdx,cards.length-1);
+  buildSlides();goToSlide(curIdx,false);
+  toast('Card removed');
+});
+
+/* ══ OLD RENAME MODAL (kept for keyboard shortcut fallback) ══ */
+// The rename functionality is now handled inside the edit-card modal below.
+
+/* ══ EDIT CARD MODAL ══ */
+let ecIdx = null; // which card is being edited
+
+// Crop engines for the edit modal
+const ecCardCrop = CropEngine('ec-card-canvas','ec-card-crop-vp','ec-card-zslider','ec-card-zin','ec-card-zout','ec-card-zreset');
+const ecLogoCrop  = CropEngine('ec-logo-canvas','ec-logo-crop-vp','ec-logo-zslider','ec-logo-zin','ec-logo-zout','ec-logo-zreset');
+
+// Tab switching
+document.querySelectorAll('.edit-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.edit-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.edit-tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+function openEditCard(i, tab='ec-name'){
+  ecIdx = i;
+  const card = cards[i];
+
+  // Reset all tabs to clean state
+  // — Name tab
+  document.getElementById('ec-name-input').value = card.title;
+
+  // — Card image tab: show current, hide crop
+  document.getElementById('ec-card-current').style.display = '';
+  document.getElementById('ec-card-crop-section').style.display = 'none';
+  document.getElementById('ec-card-current-img').src = card.dataUrl;
+  try{document.getElementById('ec-card-file').value='';}catch(e){}
+  try{document.getElementById('ec-card-file2').value='';}catch(e){}
+
+  // — Logo tab: show/hide existing logo
+  const hasLogo = !!card.logoUrl;
+  document.getElementById('ec-logo-has-img').style.display = hasLogo ? '' : 'none';
+  document.getElementById('ec-logo-no-img').style.display  = hasLogo ? 'none' : '';
+  document.getElementById('ec-logo-remove').style.display  = hasLogo ? '' : 'none';
+  document.getElementById('ec-logo-btn-label').textContent = hasLogo ? 'Replace logo' : 'Add logo';
+  if(hasLogo) document.getElementById('ec-logo-current-img').src = card.logoUrl;
+  document.getElementById('ec-logo-current').style.display = '';
+  document.getElementById('ec-logo-crop-section').style.display = 'none';
+  try{document.getElementById('ec-logo-file').value='';}catch(e){}
+  try{document.getElementById('ec-logo-file2').value='';}catch(e){}
+
+  // Activate the right tab
+  document.querySelectorAll('.edit-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.edit-tab-panel').forEach(p=>p.classList.remove('active'));
+  const targetTab = document.querySelector(`.edit-tab[data-tab="${tab}"]`);
+  if(targetTab) targetTab.classList.add('active');
+  document.getElementById(tab).classList.add('active');
+
+  document.getElementById('editcard-overlay').classList.add('on');
+  if(tab==='ec-name') setTimeout(()=>document.getElementById('ec-name-input').focus(),300);
+}
+
+function closeEditCard(){ document.getElementById('editcard-overlay').classList.remove('on'); }
+document.getElementById('editcard-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('editcard-overlay')) closeEditCard();
+});
+
+// ── Name tab ──
+document.getElementById('ec-name-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-name-save').addEventListener('click',()=>{
+  const v = document.getElementById('ec-name-input').value.trim();
+  if(!v) return toast('Please enter a name');
+  cards[ecIdx].title = v; save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Name updated'); renderHome();
+});
+document.getElementById('ec-name-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('ec-name-save').click();
+});
+
+// ── Card image tab: file input ──
+function hookEditFile(inputId, sectionId, currentId, engine){
+  function handle(file){
+    if(!file||!file.type.startsWith('image/')) return toast('Please choose an image file');
+    const r = new FileReader();
+    r.onload = ev => {
+      document.getElementById(currentId).style.display = 'none';
+      document.getElementById(sectionId).style.display = 'block';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>engine.loadImg(ev.target.result)));
+    };
+    r.readAsDataURL(file);
+  }
+  document.getElementById(inputId).addEventListener('change',e=>{if(e.target.files[0]) handle(e.target.files[0]);});
+}
+hookEditFile('ec-card-file',  'ec-card-crop-section', 'ec-card-current',  ecCardCrop);
+hookEditFile('ec-card-file2', 'ec-card-crop-section', 'ec-card-current',  ecCardCrop);
+hookEditFile('ec-logo-file',  'ec-logo-crop-section', 'ec-logo-current',  ecLogoCrop);
+hookEditFile('ec-logo-file2', 'ec-logo-crop-section', 'ec-logo-current',  ecLogoCrop);
+
+document.getElementById('ec-card-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-card-save').addEventListener('click',()=>{
+  if(!ecCardCrop.has){
+    // no new image selected — just close
+    closeEditCard(); return;
+  }
+  cards[ecIdx].dataUrl = ecCardCrop.exportImg(800, 504);
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Card image updated'); renderHome();
+});
+
+// ── Logo tab ──
+document.getElementById('ec-logo-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-logo-save').addEventListener('click',()=>{
+  if(!ecLogoCrop.has){
+    closeEditCard(); return;
+  }
+  cards[ecIdx].logoUrl = ecLogoCrop.exportImg(300, 300);
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Logo updated'); renderHome();
+});
+document.getElementById('ec-logo-remove').addEventListener('click',()=>{
+  if(!confirm('Remove the logo for this card?')) return;
+  cards[ecIdx].logoUrl = null;
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Logo removed'); renderHome();
+});
+
+/* ══ ADD CARD MODAL ══ */
+function resetAdd(){
+  document.getElementById('card-uzone').style.display='';
+  document.getElementById('card-crop-section').style.display='none';
+  document.getElementById('logo-uzone').style.display='';
+  document.getElementById('logo-crop-section').style.display='none';
+  document.getElementById('add-name').value='';
+  ['card-file','card-file2','logo-file','logo-file2'].forEach(id=>{try{document.getElementById(id).value='';}catch(e){}});
+}
+document.getElementById('add-btn').addEventListener('click',()=>{resetAdd();document.getElementById('add-overlay').classList.add('on');});
+document.getElementById('add-cancel').addEventListener('click',()=>document.getElementById('add-overlay').classList.remove('on'));
+document.getElementById('add-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('add-overlay'))document.getElementById('add-overlay').classList.remove('on');});
+document.getElementById('add-save').addEventListener('click',()=>{
+  if(!cardCrop.has)return toast('Please add a card image first');
+  const title=document.getElementById('add-name').value.trim()||'My Card';
+  const dataUrl=cardCrop.exportImg(800,504);
+  const logoUrl=logoCrop.has?logoCrop.exportImg(300,300):null;
+  cards.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),title,dataUrl,logoUrl});
+  save();
+  document.getElementById('add-overlay').classList.remove('on');
+  renderHome();
+  toast(`"${title}" added`);
+});
+
+/* ══ INIT ══ */
+load(); renderHome();
+</script>
+</body>
+</html>

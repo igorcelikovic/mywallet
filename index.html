@@ -448,6 +448,58 @@ button { font-family: inherit; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ─── EDIT CARD MODAL TABS ─── */
+.edit-tabs {
+  display: flex; gap: 6px; margin-bottom: 20px;
+  background: var(--surface2); border-radius: var(--r-md);
+  padding: 4px;
+}
+.edit-tab {
+  flex: 1; padding: 10px 6px;
+  border: none; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text-3); transition: background .15s, color .15s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.edit-tab.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
+.edit-tab-panel { display: none; }
+.edit-tab-panel.active { display: block; }
+
+/* existing-img preview inside edit modal */
+.existing-img-wrap {
+  position: relative; margin-bottom: 12px;
+}
+.existing-img-wrap img {
+  width: 100%; border-radius: var(--r-md);
+  display: block; border: 1px solid var(--border-lt);
+}
+.existing-img-wrap.square img { aspect-ratio: 1/1; object-fit: cover; }
+.existing-img-wrap.card-ar img { aspect-ratio: 1.586/1; object-fit: cover; }
+.replace-btn {
+  width: 100%; padding: 13px; border-radius: var(--r-md);
+  background: var(--surface2); border: 1.5px dashed var(--border);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--accent); cursor: pointer;
+  transition: background .14s, border-color .14s;
+  margin-bottom: 14px; position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.replace-btn:hover { background: var(--surface); border-color: var(--accent); }
+.replace-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.remove-logo-btn {
+  width: 100%; padding: 13px; border-radius: var(--r-md);
+  background: var(--danger-lt); border: 1px solid rgba(192,80,80,.2);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--danger); cursor: pointer; transition: background .14s;
+  margin-top: 10px;
+}
+.remove-logo-btn:active { background: rgba(192,80,80,.18); }
+.no-logo-hint {
+  padding: 24px 0 8px; text-align: center;
+  font-size: 14px; color: var(--text-3); line-height: 1.6;
+}
+
 /* Safe areas */
 @supports (padding: env(safe-area-inset-top)) {
   .home-header { padding-top: max(58px, calc(env(safe-area-inset-top) + 18px)); }
@@ -524,21 +576,7 @@ button { font-family: inherit; }
 
 </div>
 
-<!-- ════════════════════════════
-     RENAME MODAL
-════════════════════════════ -->
-<div class="overlay" id="edit-overlay">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">Rename card</div>
-    <div class="field-label">Card name</div>
-    <input class="text-input" id="edit-input" type="text" maxlength="40" placeholder="e.g. Starbucks Rewards">
-    <div class="modal-actions">
-      <button class="btn-cancel" id="edit-cancel">Cancel</button>
-      <button class="btn-primary" id="edit-save">Save</button>
-    </div>
-  </div>
-</div>
+<!-- EDIT CARD MODAL replaces the old rename modal -->
 
 <!-- ════════════════════════════
      ADD CARD MODAL
@@ -606,6 +644,106 @@ button { font-family: inherit; }
       <button class="btn-cancel" id="add-cancel">Cancel</button>
       <button class="btn-primary" id="add-save">Add to wallet</button>
     </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     EDIT CARD MODAL
+════════════════════════════ -->
+<div class="overlay" id="editcard-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Edit card</div>
+
+    <!-- Tabs -->
+    <div class="edit-tabs">
+      <button class="edit-tab active" data-tab="ec-name">✎ Name</button>
+      <button class="edit-tab" data-tab="ec-card">📷 Card image</button>
+      <button class="edit-tab" data-tab="ec-logo">🏷️ Logo</button>
+    </div>
+
+    <!-- Tab: Name -->
+    <div class="edit-tab-panel active" id="ec-name">
+      <div class="field-label">Card name</div>
+      <input class="text-input" id="ec-name-input" type="text" maxlength="40" placeholder="e.g. Starbucks Rewards">
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-name-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-name-save">Save name</button>
+      </div>
+    </div>
+
+    <!-- Tab: Card image -->
+    <div class="edit-tab-panel" id="ec-card">
+      <div id="ec-card-current">
+        <div class="field-label">Current card image</div>
+        <div class="existing-img-wrap card-ar" id="ec-card-preview-wrap">
+          <img id="ec-card-current-img" src="" alt="Current card">
+        </div>
+        <label class="replace-btn">
+          📷 Replace card image
+          <input type="file" id="ec-card-file" accept="image/*">
+        </label>
+      </div>
+      <div id="ec-card-crop-section" style="display:none">
+        <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+        <div class="crop-vp" id="ec-card-crop-vp" style="aspect-ratio:1.586/1">
+          <canvas id="ec-card-canvas"></canvas>
+        </div>
+        <div class="zoom-row">
+          <button class="zbtn" id="ec-card-zout">−</button>
+          <input type="range" class="zslider" id="ec-card-zslider" min="10" max="300" value="100" step="1">
+          <button class="zbtn" id="ec-card-zin">+</button>
+          <span class="zoom-reset" id="ec-card-zreset">Reset</span>
+        </div>
+        <div class="change-link-wrap">
+          <label class="change-link">Choose different photo<input type="file" id="ec-card-file2" accept="image/*"></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-card-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-card-save">Save image</button>
+      </div>
+    </div>
+
+    <!-- Tab: Logo -->
+    <div class="edit-tab-panel" id="ec-logo">
+      <div id="ec-logo-current">
+        <div id="ec-logo-has-img" style="display:none">
+          <div class="field-label">Current logo</div>
+          <div class="existing-img-wrap square" style="width:100px;margin-bottom:12px;">
+            <img id="ec-logo-current-img" src="" alt="Current logo">
+          </div>
+        </div>
+        <div id="ec-logo-no-img">
+          <div class="no-logo-hint">No logo set for this card.</div>
+        </div>
+        <label class="replace-btn">
+          🏷️ <span id="ec-logo-btn-label">Add logo</span>
+          <input type="file" id="ec-logo-file" accept="image/*">
+        </label>
+      </div>
+      <div id="ec-logo-crop-section" style="display:none">
+        <div class="crop-hint">Drag to reposition · Pinch or slider to zoom</div>
+        <div class="crop-vp" id="ec-logo-crop-vp" style="aspect-ratio:1/1">
+          <canvas id="ec-logo-canvas"></canvas>
+        </div>
+        <div class="zoom-row">
+          <button class="zbtn" id="ec-logo-zout">−</button>
+          <input type="range" class="zslider" id="ec-logo-zslider" min="10" max="300" value="100" step="1">
+          <button class="zbtn" id="ec-logo-zin">+</button>
+          <span class="zoom-reset" id="ec-logo-zreset">Reset</span>
+        </div>
+        <div class="change-link-wrap">
+          <label class="change-link">Choose different logo<input type="file" id="ec-logo-file2" accept="image/*"></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="ec-logo-cancel">Cancel</button>
+        <button class="btn-primary" id="ec-logo-save">Save logo</button>
+      </div>
+      <button class="remove-logo-btn" id="ec-logo-remove" style="display:none">Remove logo</button>
+    </div>
+
   </div>
 </div>
 
@@ -872,8 +1010,8 @@ function buildSlides(){
         </div>
       </div>
     `;
-    ss.querySelector('.banner-edit').addEventListener('click',()=>openEdit(i));
-    ss.querySelector('.banner-name').addEventListener('click',()=>openEdit(i));
+    ss.querySelector('.banner-edit').addEventListener('click',()=>openEditCard(i,'ec-name'));
+    ss.querySelector('.banner-name').addEventListener('click',()=>openEditCard(i,'ec-name'));
     st.appendChild(ss);
   });
 }
@@ -940,24 +1078,131 @@ document.getElementById('del-btn').addEventListener('click',()=>{
   toast('Card removed');
 });
 
-/* ══ EDIT MODAL ══ */
-let editIdx=null;
-function openEdit(i){editIdx=i;document.getElementById('edit-input').value=cards[i].title;document.getElementById('edit-overlay').classList.add('on');setTimeout(()=>document.getElementById('edit-input').focus(),300);}
-function closeEdit(){document.getElementById('edit-overlay').classList.remove('on');}
-document.getElementById('edit-cancel').addEventListener('click',closeEdit);
-document.getElementById('edit-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('edit-overlay'))closeEdit();});
-document.getElementById('edit-save').addEventListener('click',()=>{
-  const v=document.getElementById('edit-input').value.trim();
-  if(!v)return toast('Please enter a name');
-  cards[editIdx].title=v; save();
-  // update visible slide
-  const slides=document.querySelectorAll('.ss');
-  if(slides[editIdx]){
-    slides[editIdx].querySelector('.banner-name').textContent=v;
-  }
-  closeEdit(); toast('Name updated'); renderHome();
+/* ══ OLD RENAME MODAL (kept for keyboard shortcut fallback) ══ */
+// The rename functionality is now handled inside the edit-card modal below.
+
+/* ══ EDIT CARD MODAL ══ */
+let ecIdx = null; // which card is being edited
+
+// Crop engines for the edit modal
+const ecCardCrop = CropEngine('ec-card-canvas','ec-card-crop-vp','ec-card-zslider','ec-card-zin','ec-card-zout','ec-card-zreset');
+const ecLogoCrop  = CropEngine('ec-logo-canvas','ec-logo-crop-vp','ec-logo-zslider','ec-logo-zin','ec-logo-zout','ec-logo-zreset');
+
+// Tab switching
+document.querySelectorAll('.edit-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.edit-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.edit-tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
 });
-document.getElementById('edit-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('edit-save').click();});
+
+function openEditCard(i, tab='ec-name'){
+  ecIdx = i;
+  const card = cards[i];
+
+  // Reset all tabs to clean state
+  // — Name tab
+  document.getElementById('ec-name-input').value = card.title;
+
+  // — Card image tab: show current, hide crop
+  document.getElementById('ec-card-current').style.display = '';
+  document.getElementById('ec-card-crop-section').style.display = 'none';
+  document.getElementById('ec-card-current-img').src = card.dataUrl;
+  try{document.getElementById('ec-card-file').value='';}catch(e){}
+  try{document.getElementById('ec-card-file2').value='';}catch(e){}
+
+  // — Logo tab: show/hide existing logo
+  const hasLogo = !!card.logoUrl;
+  document.getElementById('ec-logo-has-img').style.display = hasLogo ? '' : 'none';
+  document.getElementById('ec-logo-no-img').style.display  = hasLogo ? 'none' : '';
+  document.getElementById('ec-logo-remove').style.display  = hasLogo ? '' : 'none';
+  document.getElementById('ec-logo-btn-label').textContent = hasLogo ? 'Replace logo' : 'Add logo';
+  if(hasLogo) document.getElementById('ec-logo-current-img').src = card.logoUrl;
+  document.getElementById('ec-logo-current').style.display = '';
+  document.getElementById('ec-logo-crop-section').style.display = 'none';
+  try{document.getElementById('ec-logo-file').value='';}catch(e){}
+  try{document.getElementById('ec-logo-file2').value='';}catch(e){}
+
+  // Activate the right tab
+  document.querySelectorAll('.edit-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.edit-tab-panel').forEach(p=>p.classList.remove('active'));
+  const targetTab = document.querySelector(`.edit-tab[data-tab="${tab}"]`);
+  if(targetTab) targetTab.classList.add('active');
+  document.getElementById(tab).classList.add('active');
+
+  document.getElementById('editcard-overlay').classList.add('on');
+  if(tab==='ec-name') setTimeout(()=>document.getElementById('ec-name-input').focus(),300);
+}
+
+function closeEditCard(){ document.getElementById('editcard-overlay').classList.remove('on'); }
+document.getElementById('editcard-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('editcard-overlay')) closeEditCard();
+});
+
+// ── Name tab ──
+document.getElementById('ec-name-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-name-save').addEventListener('click',()=>{
+  const v = document.getElementById('ec-name-input').value.trim();
+  if(!v) return toast('Please enter a name');
+  cards[ecIdx].title = v; save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Name updated'); renderHome();
+});
+document.getElementById('ec-name-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('ec-name-save').click();
+});
+
+// ── Card image tab: file input ──
+function hookEditFile(inputId, sectionId, currentId, engine){
+  function handle(file){
+    if(!file||!file.type.startsWith('image/')) return toast('Please choose an image file');
+    const r = new FileReader();
+    r.onload = ev => {
+      document.getElementById(currentId).style.display = 'none';
+      document.getElementById(sectionId).style.display = 'block';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>engine.loadImg(ev.target.result)));
+    };
+    r.readAsDataURL(file);
+  }
+  document.getElementById(inputId).addEventListener('change',e=>{if(e.target.files[0]) handle(e.target.files[0]);});
+}
+hookEditFile('ec-card-file',  'ec-card-crop-section', 'ec-card-current',  ecCardCrop);
+hookEditFile('ec-card-file2', 'ec-card-crop-section', 'ec-card-current',  ecCardCrop);
+hookEditFile('ec-logo-file',  'ec-logo-crop-section', 'ec-logo-current',  ecLogoCrop);
+hookEditFile('ec-logo-file2', 'ec-logo-crop-section', 'ec-logo-current',  ecLogoCrop);
+
+document.getElementById('ec-card-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-card-save').addEventListener('click',()=>{
+  if(!ecCardCrop.has){
+    // no new image selected — just close
+    closeEditCard(); return;
+  }
+  cards[ecIdx].dataUrl = ecCardCrop.exportImg(800, 504);
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Card image updated'); renderHome();
+});
+
+// ── Logo tab ──
+document.getElementById('ec-logo-cancel').addEventListener('click', closeEditCard);
+document.getElementById('ec-logo-save').addEventListener('click',()=>{
+  if(!ecLogoCrop.has){
+    closeEditCard(); return;
+  }
+  cards[ecIdx].logoUrl = ecLogoCrop.exportImg(300, 300);
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Logo updated'); renderHome();
+});
+document.getElementById('ec-logo-remove').addEventListener('click',()=>{
+  if(!confirm('Remove the logo for this card?')) return;
+  cards[ecIdx].logoUrl = null;
+  save();
+  buildSlides(); goToSlide(curIdx, false);
+  closeEditCard(); toast('Logo removed'); renderHome();
+});
 
 /* ══ ADD CARD MODAL ══ */
 function resetAdd(){
